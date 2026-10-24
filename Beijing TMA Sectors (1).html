@@ -1,0 +1,1115 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Beijing TMA Sectors</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: controls on top, sector map on the left, altitude profile and sector info for the selected point on the right. Stacks on narrow screens. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0b0b;
+  --surface: #151515;
+  --ink: #ebebeb;
+  --muted: #9b9b9b;
+  --line: #2b2b2b;
+  --grid: #1f1f1f;
+  --map: #101010;
+  --accent: #c8362f;
+  --accent-ink: #ffffff;
+  --accent-soft: #3b1815;
+  --k1: #5aa0d6; --k2: #6cbf78; --k3: #ee9f4f; --k4: #b58ae0; --k5: #e87aa8; --k6: #4cc4b6;
+  --k7: #e8766c; --k8: #b9d04d; --k9: #a3b0bc; --k10: #e2c24c; --k11: #8a9ee8; --k12: #c99a74;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-data: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 36px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+header { display: flex; flex-direction: column; gap: 4px; }
+.eyebrow { font: 500 12px var(--font-data); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 700 clamp(32px, 6vw, 48px)/1 var(--font-display); letter-spacing: .02em; text-transform: uppercase; text-wrap: balance; }
+.lede { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px; min-width: 0; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; align-items: start; }
+.ctl { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lbl { font: 500 11px var(--font-data); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.readout { font: 500 15px var(--font-data); font-variant-numeric: tabular-nums; }
+.readout span { color: var(--muted); font-weight: 400; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+.seg { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { flex: 1 1 auto; font: 500 12.5px var(--font-data); padding: 7px 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer; text-align: center; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg.unit { display: inline-flex; align-self: flex-start; }
+.seg.grid2 { display: grid; grid-template-columns: 1fr 1fr; }
+.seg.grid2 button, .seg.grid2 button + button { border: 0; border-bottom: 1px solid var(--line); padding: 9px 10px; }
+.seg.grid2 button:nth-child(odd) { border-right: 1px solid var(--line); }
+.seg.grid2 button:nth-child(n+3) { border-bottom: 0; }
+.rwy { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 18px 28px; }
+.ap { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ap-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.ap-h h2 { font-size: 20px; }
+.ap-set { font: 400 12.5px var(--font-data); color: var(--muted); }
+.ap-set b { color: var(--ink); font-weight: 500; }
+.rrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.rrow .role-l { flex: 0 0 34px; font: 500 11px var(--font-data); letter-spacing: .1em; color: var(--muted); }
+.rgrp { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rgrp + .rgrp { padding-left: 10px; border-left: 1px solid var(--line); }
+.gtag { font: 500 10px var(--font-data); letter-spacing: .08em; color: var(--muted); margin-right: 2px; }
+.rb { font: 500 12.5px var(--font-data); padding: 5px 9px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
+.rb[aria-pressed="true"] { color: var(--ink); }
+.rb.arr[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.rb.dep[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.mode { align-self: flex-start; }
+.mode button { padding: 4px 9px; font-size: 12px; }
+button:focus-visible, input:focus-visible, tr[tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#map { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; max-width: 100%; cursor: crosshair; border: 1px solid var(--line); border-radius: 4px; touch-action: manipulation; }
+.mapbg { fill: var(--map); }
+.gl-line { stroke: var(--grid); stroke-width: 1; }
+.gl { font: 400 10px var(--font-data); fill: var(--muted); }
+.tma { fill: none; stroke: var(--muted); stroke-width: 2.5; stroke-dasharray: 9 5; pointer-events: none; }
+.tma-t { font: 500 11px var(--font-data); fill: var(--muted); letter-spacing: .06em; }
+.sec { fill: var(--sc); fill-opacity: .26; stroke: var(--sc); stroke-width: 1.5; }
+.sec:not(.on) { display: none; }
+.sec.all { fill-opacity: .14; }
+.sec.all.sel { fill-opacity: .3; }
+.sec-line { fill: none; stroke: var(--sc); stroke-width: 1.2; pointer-events: none; }
+.lab .f { font: 400 9px var(--font-data); letter-spacing: 0; }
+.ctl.off { opacity: .45; }
+.sec.sel { fill-opacity: .46; stroke-width: 3; }
+.lab { text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--map); stroke-width: 3px; stroke-linejoin: round; fill: var(--ink); }
+.lab .n { font: 500 13px var(--font-display); letter-spacing: .05em; }
+.apt-dot { fill: var(--ink); }
+.apt { font: 500 11px var(--font-data); fill: var(--ink); paint-order: stroke; stroke: var(--map); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.pin circle { fill: none; stroke: var(--accent); stroke-width: 2; }
+.pin line { stroke: var(--accent); stroke-width: 2; }
+.pin .halo { stroke: var(--map); stroke-width: 5; }
+@media (prefers-reduced-motion: no-preference) { .sec { transition: fill-opacity .15s, stroke-opacity .15s; } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--ink); font: 500 13px var(--font-body); cursor: pointer; opacity: .6; }
+.chip .dot { width: 10px; height: 10px; border-radius: 2px; background: var(--sc); flex: none; }
+.chip small { font: 400 11px var(--font-data); color: var(--muted); }
+.chip.on { opacity: 1; border-color: var(--sc); }
+
+h2 { margin: 0; font: 600 22px/1.1 var(--font-display); letter-spacing: .05em; text-transform: uppercase; }
+.phead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.coord { font: 400 13px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.splits { margin: 0; font: 400 13px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.splits b { color: var(--ink); font-weight: 500; }
+
+.col svg { display: block; width: 100%; max-width: 440px; height: auto; margin: 0 auto; }
+.ax { font: 400 11px var(--font-data); fill: var(--muted); font-variant-numeric: tabular-nums; }
+.tick { stroke: var(--grid); stroke-width: 1; }
+.bar { fill: var(--sc); fill-opacity: .28; stroke: var(--sc); stroke-width: 1.5; }
+.bar.sel { fill-opacity: .5; stroke-width: 3; }
+.bfill { fill: var(--sc); fill-opacity: .28; }
+.bout { fill: none; stroke: var(--sc); stroke-width: 1.5; }
+.bn { font: 600 16px var(--font-display); letter-spacing: .04em; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.bb { font: 400 10.5px var(--font-data); fill: var(--muted); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.hatch-line { stroke: var(--line); stroke-width: 1; }
+.gapr { fill: url(#hatch); stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+.note-t { font: 400 11px var(--font-body); fill: var(--muted); }
+.cut { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3; }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font: 500 11px var(--font-data); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 0 6px 6px; }
+td { padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+tr[tabindex] { cursor: pointer; }
+td.fq { font: 500 14px var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.band { font: 500 13px var(--font-data); font-variant-numeric: tabular-nums; }
+td.band small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+.nm { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.nm .dot { width: 10px; height: 10px; border-radius: 2px; background: var(--sc); flex: none; }
+.role { display: block; color: var(--muted); font-size: 13px; padding-left: 18px; }
+tr.is-sel td { background: var(--bg); }
+.empty { color: var(--muted); margin: 0; }
+
+.detail h3 { margin: 0; font: 600 26px/1.05 var(--font-display); letter-spacing: .04em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.detail h3 .dot { width: 14px; height: 14px; border-radius: 3px; background: var(--sc); }
+.detail .call { color: var(--muted); font: 500 14px var(--font-body); letter-spacing: 0; text-transform: none; }
+.freq { font: 500 30px/1.1 var(--font-data); font-variant-numeric: tabular-nums; margin: 10px 0 2px; }
+.freq small { font-size: 14px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 10px 0 0; font-size: 14px; }
+.kv dt { font: 500 11px var(--font-data); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.kv dd div + div { margin-top: 2px; }
+.fine { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+
+.cname { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 10px; }
+.cname .dot { width: 14px; height: 14px; border-radius: 3px; background: var(--sc); flex: none; }
+.cname b { font: 600 26px/1.05 var(--font-display); letter-spacing: .04em; }
+.cname span.m { color: var(--muted); }
+.cblock { margin-top: 14px; }
+.chead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.ctitle { font: 500 12px var(--font-data); letter-spacing: .1em; text-transform: uppercase; }
+.calt { font: 400 12.5px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.cp { margin-left: auto; font: 500 12px var(--font-data); padding: 3px 9px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
+.csub { margin: 3px 0 0; font: 400 12.5px var(--font-data); color: var(--muted); }
+pre.gng { margin: 6px 0 0; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; font: 400 13px/1.55 var(--font-data); color: var(--ink); overflow-x: auto; font-variant-numeric: tabular-nums; }
+
+.notice { font-size: 13px; color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; padding: 10px 12px; max-width: 100ch; display: flex; flex-direction: column; gap: 6px; }
+.notice p { margin: 0; }
+.notice b { color: var(--ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Sector map · eAIP China ENR 2.1.5 · 2026-10</div>
+    <h1>Beijing TMA</h1>
+    <p class="lede">Pick the runways in use at ZBAA and ZBAD, then click the map. You get the sector name, frequency and every altitude split at that point.</p>
+  </header>
+
+  <section class="card rwy" aria-label="Runways in use">
+    <div class="ap" id="ap-ZBAA"></div>
+    <div class="ap" id="ap-ZBAD"></div>
+  </section>
+
+  <section class="card controls" aria-label="Settings">
+    <div class="ctl">
+      <span class="lbl" id="lblF">Approach unit</span>
+      <div class="seg grid2" id="flt" role="group" aria-labelledby="lblF"></div>
+    </div>
+    <div class="ctl">
+      <span class="lbl" id="lblV">View</span>
+      <div class="seg" id="vw" role="group" aria-labelledby="lblV"></div>
+    </div>
+    <div class="ctl" id="altCtl">
+      <label class="lbl" for="alt">Show sectors at altitude</label>
+      <div class="readout" id="altOut"></div>
+      <input type="range" id="alt" min="0" max="6000" step="300" value="1500">
+    </div>
+    <div class="ctl">
+      <span class="lbl" id="lblU">Unit</span>
+      <div class="seg unit" role="group" aria-labelledby="lblU">
+        <button type="button" id="uM" aria-pressed="true">m</button>
+        <button type="button" id="uF" aria-pressed="false">ft</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="stack">
+    <section class="card" aria-label="Map">
+      <svg id="map" viewBox="0 0 800 800" role="img" aria-label="Sector map of Beijing TMA. Click to choose a point. The sectors are also available as buttons below the map."></svg>
+      <div class="chips" id="chips"></div>
+    </section>
+      <section class="card coords" id="coords" aria-label="Sector coordinates"></section>
+    </div>
+
+    <aside class="stack" aria-live="polite">
+      <section class="card col">
+        <div class="phead">
+          <h2>Altitude splits</h2>
+          <span class="coord" id="coord"></span>
+        </div>
+        <div id="colSvg" style="margin:10px 0 6px"></div>
+        <p class="splits" id="splits"></p>
+      </section>
+      <section class="card">
+        <table>
+          <thead><tr><th>Sector</th><th>Frequency</th><th>Altitude band</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </section>
+      <section class="card detail" id="detail"></section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  /* ---------- Data from eAIP China ENR 2.1.5 (2026-10). Altitudes in metres. ---------- */
+  var RWY = {
+    ZBAA: { N: ['01', '36L', '36R'], S: ['18L', '18R', '19'] },
+    ZBAD: { N: ['01L', '29R', '35L', '35R'], S: ['11L', '17L', '17R', '19R'] }
+  };
+  var RW = {};
+  Object.keys(RWY).forEach(function (ap) { RW[ap] = { N: RWY[ap].N.join(' / '), S: RWY[ap].S.join(' / ') }; });
+
+  var QUAD = 'N394805 E1162156, N394854 E1163136, N393103 E1163420, N393015 E1162440';
+  var P01N = 'N400300 E1161938, N400428 E1163622, N393236 E1164129, N393122 E1163812, N393103 E1163420, N393015 E1162440, N394805 E1162156';
+  var P01S = 'N402258 E1155554, N402602 E1163252, N400428 E1163622, N400300 E1161938, N400110 E1155913';
+  var P02N = 'N400428 E1163622, N400553 E1165428, N393853 E1165814, N393558 E1165026, N393236 E1164129';
+  var P02S = 'N402602 E1163252, N402730 E1165126, N400553 E1165428, N400428 E1163622';
+  var P05N = 'N392831 E1160411, N393015 E1162440, N390437 E1162829, N390246 E1160802';
+  var P05S = 'N400110 E1155913, N400300 E1161938, N394805 E1162156, N393015 E1162440, N392831 E1160411';
+  var P1214 = 'N394000 E1152610, N392831 E1160411, N392917 E1161312, N390335 E1161657, N390203 E1161710, N383931 E1155649, N384003 E1153153';
+  var P1315 = 'N392917 E1161312, N393015 E1162440, N393103 E1163420, N393122 E1163812, N393236 E1164129, N391815 E1164346, N390608 E1164540, N390305 E1164609, N390122 E1164625, N383852 E1162241, N383931 E1155649, N390203 E1161710, N390335 E1161657';
+
+  var TMA = 'N402526 E1162509, N403610 E1163307, N404640 E1163400, N404250 E1171655, N402102 E1170843, N392536 E1171847, N390917 E1173001, N390413 E1180204, N383529 E1180145, N384003 E1153153, N394000 E1152610, N402600 E1153150';
+
+  function Z(lo, hi, loRef, hiRef, area, kind) { return { lo: lo, hi: hi, loRef: loRef, hiRef: hiRef, area: area, kind: kind || '' }; }
+  function low(hi, area, kind) { return Z(0, hi, 'GND', 'QNH', area, kind); }
+  function full(area, kind) { return Z(0, 6000, 'GND', 'STD', area, kind); }
+  function above(lo, area, kind) { return Z(lo, 6000, 'QNH', 'STD', area, kind); }
+  var NOTE_ABOVE = 'For the sub-area the AIP gives "QNH … m / GND". Read here as the sector\'s lower limit (the approach sector lies below). Check against the AIP.';
+
+  var SECTORS = [
+    { id: 'AP01N', fam: 'AP01', color: 1, cfg: ['ZBAA', 'N'], call: 'Capital Approach', freq: '126.1', sec: '125.05', hours: 'by ATC',
+      base: P01N, zones: [low(1800, QUAD, 'Sub-area'), low(2700, null, 'Rest of area')] },
+    { id: 'AP01S', fam: 'AP01', color: 1, cfg: ['ZBAA', 'S'], call: 'Capital Approach', freq: '126.1', sec: '125.05', hours: 'by ATC',
+      base: P01S, zones: [low(2700)] },
+    { id: 'AP02N', fam: 'AP02', color: 2, cfg: ['ZBAA', 'N'], call: 'Capital Approach', freq: '119.0', sec: '125.05', hours: 'by ATC',
+      base: P02N, zones: [low(2100)] },
+    { id: 'AP02S', fam: 'AP02', color: 2, cfg: ['ZBAA', 'S'], call: 'Capital Approach', freq: '119.0', sec: '125.05', hours: 'by ATC',
+      base: P02S, zones: [low(2100)] },
+    { id: 'AP03N', fam: 'AP03', color: 3, cfg: ['ZBAA', 'N'], call: 'Capital Approach', freq: '120.2', sec: '125.05', hours: 'by ATC',
+      base: 'N402258 E1155554, N402602 E1163252, N402730 E1165126, N400553 E1165428, N400428 E1163622, N400300 E1161938, N400110 E1155913',
+      zones: [low(2700, { side: 'W', line: 'N402602 E1163252, N400428 E1163622' }, 'Sub-area 1'), low(2100, { side: 'E', line: 'N402602 E1163252, N400428 E1163622' }, 'Sub-area 2')] },
+    { id: 'AP03S', fam: 'AP03', color: 3, cfg: ['ZBAA', 'S'], call: 'Capital Approach', freq: '120.2', sec: '125.05', hours: 'by ATC',
+      base: 'N400300 E1161938, N400428 E1163622, N400553 E1165428, N393853 E1165814, N393558 E1165026, N393236 E1164129, N393122 E1163812, N393103 E1163420, N393015 E1162440, N394805 E1162156',
+      zones: [low(1800, QUAD, 'Sub-area 1'), low(2700, { side: 'W', line: 'N400428 E1163622, N393236 E1164129' }, 'Sub-area 2'), low(2100, { side: 'E', line: 'N400428 E1163622, N393236 E1164129' }, 'Sub-area 3')] },
+
+    { id: 'AP05N', fam: 'AP05', color: 4, cfg: ['ZBAD', 'N'], call: 'Daxing Approach', freq: '126.5', sec: '119.625', hours: 'by ATC',
+      base: P05N, zones: [low(2400)] },
+    { id: 'AP05S', fam: 'AP05', color: 4, cfg: ['ZBAD', 'S'], call: 'Daxing Approach', freq: '126.5', sec: '119.625', hours: 'by ATC',
+      base: P05S, zones: [low(2400)] },
+    { id: 'AP06N', fam: 'AP06', color: 5, cfg: ['ZBAD', 'N'], call: 'Daxing Approach', freq: '119.925', sec: '119.625', hours: 'by ATC',
+      base: 'N393015 E1162440, N393103 E1163420, N393122 E1163812, N393236 E1164129, N393558 E1165026, N392058 E1165638, N391815 E1164346, N390608 E1164540, N390437 E1162829',
+      zones: [low(2100)] },
+    { id: 'AP06S', fam: 'AP06', color: 5, cfg: ['ZBAD', 'S'], call: 'Daxing Approach', freq: '119.925', sec: '119.625', hours: 'by ATC',
+      base: QUAD, zones: [low(1800)] },
+    { id: 'AP07N', fam: 'AP07', color: 6, cfg: ['ZBAD', 'N'], call: 'Daxing Approach', freq: '120.0', sec: '119.625', hours: 'by ATC',
+      base: 'N400110 E1155913, N400300 E1161938, N394805 E1162156, N394854 E1163136, N393103 E1163420, N393015 E1162440, N392831 E1160411',
+      zones: [low(2400, { side: 'W', line: 'N400300 E1161938, N393015 E1162440' }, 'Sub-area 1'), low(1800, { side: 'E', line: 'N400300 E1161938, N393015 E1162440' }, 'Sub-area 2')] },
+    { id: 'AP07S', fam: 'AP07', color: 6, cfg: ['ZBAD', 'S'], call: 'Daxing Approach', freq: '120.0', sec: '119.625', hours: 'by ATC',
+      base: 'N392831 E1160411, N393015 E1162440, N393103 E1163420, N393122 E1163812, N393236 E1164129, N393558 E1165026, N392058 E1165638, N391815 E1164346, N390608 E1164540, N390437 E1162829, N390246 E1160802',
+      zones: [low(2400, P05N, 'Sub-area'), low(2100, null, 'Rest of area')] },
+
+    { id: 'AP09', fam: 'AP09', color: 7, cfg: null, call: 'Beijing Approach', freq: '121.1', sec: '127.75', hours: 'by ATC',
+      base: 'N402600 E1153150, N402526 E1162509, N403404 E1163133, N402602 E1163252, N400428 E1163622, N400300 E1161938, N400110 E1155913, N401443 E1153026',
+      zones: [above(2700, P01S, 'Sub-area'), full(null, 'Rest of area')], note: NOTE_ABOVE },
+    { id: 'AP10', fam: 'AP10', color: 8, cfg: null, call: 'Beijing Approach', freq: '129.0', sec: '127.75', hours: 'by ATC',
+      base: 'N401443 E1153026, N400110 E1155913, N392831 E1160411, N394000 E1152610', zones: [full()] },
+    { id: 'AP11', fam: 'AP11', color: 9, cfg: null, call: 'Beijing Approach', freq: '119.7', sec: '127.75', hours: 'by ATC',
+      base: 'N400110 E1155913, N400300 E1161938, N400428 E1163622, N393236 E1164129, N393122 E1163812, N393103 E1163420, N393015 E1162440, N392831 E1160411',
+      zones: [above(2700, P01N, 'Sub-area 1'), above(2400, P05S, 'Sub-area 2'), full(null, 'Rest of area')], note: NOTE_ABOVE },
+    { id: 'AP12', fam: 'AP12', color: 10, cfg: null, call: 'Beijing Approach', freq: '119.85', sec: '119.425', hours: 'H24',
+      base: P1214, zones: [Z(3900, 6000, 'STD', 'STD')] },
+    { id: 'AP13', fam: 'AP13', color: 11, cfg: null, call: 'Beijing Approach', freq: '121.25', sec: '119.425', hours: 'by ATC',
+      base: P1315, zones: [Z(3900, 6000, 'STD', 'STD')] },
+    { id: 'AP14', fam: 'AP14', color: 12, cfg: null, call: 'Beijing Approach', freq: '126.3', sec: '119.425', hours: 'by ATC',
+      base: P1214, zones: [Z(0, 3900, 'GND', 'STD')], exclude: ['AP05', 'AP07'], remark: 'Exclude AP05 and AP07' },
+    { id: 'AP15', fam: 'AP15', color: 1, cfg: null, call: 'Beijing Approach', freq: '125.8', sec: '119.425', hours: 'by ATC',
+      base: P1315, zones: [Z(0, 3900, 'GND', 'STD')], exclude: ['AP07'], remark: 'Exclude AP07' },
+    { id: 'AP16', fam: 'AP16', color: 2, cfg: null, call: 'Beijing Approach', freq: '124.4', sec: '127.75', hours: 'by ATC',
+      base: 'N404640 E1163400, N404250 E1171655, N402102 E1170843, N400710 E1171116, N400553 E1165428, N400428 E1163622, N402602 E1163252, N403404 E1163133, N403610 E1163307',
+      zones: [above(2100, P02S, 'Sub-area'), full(null, 'Rest of area')], note: NOTE_ABOVE },
+    { id: 'AP17', fam: 'AP17', color: 3, cfg: null, call: 'Beijing Approach', freq: '120.6', sec: '127.75', hours: 'H24',
+      base: 'N400428 E1163622, N400553 E1165428, N400710 E1171116, N392536 E1171847, N392058 E1165638, N393558 E1165026, N393236 E1164129',
+      zones: [above(2100, P02N, 'Sub-area'), full(null, 'Rest of area')], note: NOTE_ABOVE },
+    { id: 'AP18', fam: 'AP18', color: 4, cfg: null, call: 'Beijing Approach', freq: '125.5', sec: '119.425', hours: 'by ATC',
+      base: 'N393236 E1164129, N393558 E1165026, N392058 E1165638, N392536 E1171847, N391200 E1172810, N390917 E1173001, N390900 E1173150, N390413 E1180204, N384951 E1180154, N384544 E1180152, N383529 E1180145, N383852 E1162241, N390122 E1164625, N390305 E1164609, N390608 E1164540, N391815 E1164346',
+      zones: [Z(0, 6000, 'GND', 'STD')], exclude: ['AP06', 'AP07'], remark: 'Exclude AP06/07 and Tianjin APP' }
+  ];
+  var AIRPORTS = [{ id: 'ZBAA', lat: 40.0801, lon: 116.5846 }, { id: 'ZBAD', lat: 39.5092, lon: 116.4106 }];
+  var TOP_STD = 6000, TOP_VIEW = 6500;
+
+  /* ---------- Projection ---------- */
+  var K = 5.4, CX = 400, CY = 400, NS = 'http://www.w3.org/2000/svg';
+  var lat0 = 39.68, lon0 = 116.73, kx = 60 * Math.cos(lat0 * Math.PI / 180);
+  function toNm(lat, lon) { return { x: (lon - lon0) * kx, y: (lat - lat0) * 60 }; }
+  function fromNm(x, y) { return { lat: lat0 + y / 60, lon: lon0 + x / kx }; }
+  function px(p) { return [CX + p.x * K, CY - p.y * K]; }
+  function parse(str) {
+    return str.split(',').map(function (t) {
+      var m = t.trim().match(/N(\d\d)(\d\d)(\d\d) E(\d\d\d)(\d\d)(\d\d)/);
+      return toNm(+m[1] + m[2] / 60 + m[3] / 3600, +m[4] + m[5] / 60 + m[6] / 3600);
+    });
+  }
+
+  /* ---------- Geometry ---------- */
+  function pip(p, poly) {
+    var inside = false, j = poly.length - 1, i;
+    for (i = 0; i < poly.length; i++) {
+      var a = poly[i], b = poly[j];
+      if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+      j = i;
+    }
+    return inside;
+  }
+  function area(p) { var a = 0, i, j; for (i = 0; i < p.length; i++) { j = (i + 1) % p.length; a += p[i].x * p[j].y - p[j].x * p[i].y; } return Math.abs(a / 2); }
+  function centroid(p) {
+    var a = 0, cx = 0, cy = 0, i, j, f;
+    for (i = 0; i < p.length; i++) { j = (i + 1) % p.length; f = p[i].x * p[j].y - p[j].x * p[i].y; a += f; cx += (p[i].x + p[j].x) * f; cy += (p[i].y + p[j].y) * f; }
+    a /= 2; return { x: cx / (6 * a), y: cy / (6 * a) };
+  }
+  function interior(p) {
+    var c = centroid(p); if (pip(c, p)) return c;
+    var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, best = null, bd = 1e9, gx, gy;
+    p.forEach(function (q) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); });
+    for (gx = 0; gx <= 30; gx++) for (gy = 0; gy <= 30; gy++) {
+      var t = { x: x0 + (x1 - x0) * gx / 30, y: y0 + (y1 - y0) * gy / 30 };
+      if (pip(t, p)) { var d = Math.hypot(t.x - c.x, t.y - c.y); if (d < bd) { bd = d; best = t; } }
+    }
+    return best || p[0];
+  }
+  function clipSide(poly, A, B, side) {
+    var kk = (B.x - A.x) / (B.y - A.y);
+    function f(p) { var v = p.x - A.x - kk * (p.y - A.y); return side === 'W' ? -v : v; }
+    var out = [], n = poly.length, i;
+    for (i = 0; i < n; i++) {
+      var a = poly[i], b = poly[(i + 1) % n], fa = f(a), fb = f(b);
+      if (fa >= 0) out.push(a);
+      if ((fa >= 0) !== (fb >= 0)) { var t = fa / (fa - fb); out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }); }
+    }
+    return out;
+  }
+  function ring(p) { return 'M' + p.map(function (q) { var c = px(q); return c[0].toFixed(1) + ' ' + c[1].toFixed(1); }).join('L') + 'Z'; }
+  function pathD(poly, holes) { var d = ring(poly); (holes || []).forEach(function (h) { d += ring(h); }); return d; }
+
+  SECTORS.forEach(function (s) {
+    s.baseP = parse(s.base);
+    s.zones.forEach(function (z) {
+      if (z.area == null) z.poly = s.baseP;
+      else if (typeof z.area === 'string') z.poly = parse(z.area);
+      else { var ln = parse(z.area.line); z.poly = clipSide(s.baseP, ln[0], ln[1], z.area.side); }
+      z.lp = interior(z.poly);
+    });
+    s.zones.forEach(function (z, i) {
+      z.holes = [];
+      for (var j = 0; j < i; j++) { var o = s.zones[j]; if (o.poly !== z.poly && pip(o.lp, z.poly)) z.holes.push(o.poly); }
+      var a = area(z.poly); z.holes.forEach(function (h) { a -= area(h); });
+      z.empty = a < 1;
+    });
+  });
+  /* ---------- Region geometry ----------
+     A region is a list of directed edges [x1, y1, x2, y2] with the interior on the left
+     (outer rings counter-clockwise, holes clockwise). Union, difference and intersection
+     split the edges where they meet, then keep the edges that bound the result. */
+  var GEO = (function () {
+    var EPS = 2e-6, SNAP = 1e6;
+    function sn(v) { return Math.round(v * SNAP) / SNAP; }
+    function polyEdges(pts) {
+      var n = pts.length, a = 0, i, j;
+      for (i = 0; i < n; i++) { j = (i + 1) % n; a += pts[i].x * pts[j].y - pts[j].x * pts[i].y; }
+      var P = a < 0 ? pts.slice().reverse() : pts, E = [];
+      for (i = 0; i < n; i++) {
+        j = (i + 1) % n;
+        var x1 = sn(P[i].x), y1 = sn(P[i].y), x2 = sn(P[j].x), y2 = sn(P[j].y);
+        if (x1 !== x2 || y1 !== y2) E.push([x1, y1, x2, y2]);
+      }
+      return E;
+    }
+    function wind(E, px, py) {
+      var wn = 0, i, e, c;
+      for (i = 0; i < E.length; i++) {
+        e = E[i]; c = (e[2] - e[0]) * (py - e[1]) - (px - e[0]) * (e[3] - e[1]);
+        if (e[1] <= py) { if (e[3] > py && c > 0) wn++; } else if (e[3] <= py && c < 0) wn--;
+      }
+      return wn;
+    }
+    function onEdge(E, mx, my, dx, dy) {
+      for (var i = 0; i < E.length; i++) {
+        var e = E[i], ex = e[2] - e[0], ey = e[3] - e[1], l2 = ex * ex + ey * ey;
+        var t = Math.max(0, Math.min(1, ((mx - e[0]) * ex + (my - e[1]) * ey) / l2));
+        if (Math.hypot(mx - (e[0] + t * ex), my - (e[1] + t * ey)) < EPS) return (ex * dx + ey * dy) > 0 ? 1 : -1;
+      }
+      return 0;
+    }
+    function split(E, F) {
+      var out = [];
+      E.forEach(function (e) {
+        var dx = e[2] - e[0], dy = e[3] - e[1], l2 = dx * dx + dy * dy, ts = [0, 1];
+        F.forEach(function (f) {
+          [[f[0], f[1]], [f[2], f[3]]].forEach(function (v) {
+            var t = ((v[0] - e[0]) * dx + (v[1] - e[1]) * dy) / l2;
+            if (t > 1e-9 && t < 1 - 1e-9 && Math.hypot(v[0] - (e[0] + t * dx), v[1] - (e[1] + t * dy)) < EPS) ts.push(t);
+          });
+          var fx = f[2] - f[0], fy = f[3] - f[1], den = dx * fy - dy * fx;
+          if (Math.abs(den) > 1e-12) {
+            var t = ((f[0] - e[0]) * fy - (f[1] - e[1]) * fx) / den, u = ((f[0] - e[0]) * dy - (f[1] - e[1]) * dx) / den;
+            if (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9) ts.push(t);
+          }
+        });
+        ts.sort(function (a, b) { return a - b; });
+        for (var k = 0; k < ts.length - 1; k++) {
+          if (ts[k + 1] - ts[k] < 1e-9) continue;
+          var a = ts[k] === 0 ? [e[0], e[1]] : [sn(e[0] + ts[k] * dx), sn(e[1] + ts[k] * dy)];
+          var b = ts[k + 1] === 1 ? [e[2], e[3]] : [sn(e[0] + ts[k + 1] * dx), sn(e[1] + ts[k + 1] * dy)];
+          if (a[0] !== b[0] || a[1] !== b[1]) out.push([a[0], a[1], b[0], b[1]]);
+        }
+      });
+      return out;
+    }
+    function op(A, B, mode) {
+      if (!A.length || !B.length) {
+        if (mode === 'inter') return [];
+        if (mode === 'diff') return A.slice();
+        return A.length ? A.slice() : B.slice();
+      }
+      var out = [], seen = {};
+      function add(e) { var k = e.join(','); if (!seen[k]) { seen[k] = 1; out.push(e); } }
+      split(A, B).forEach(function (e) {
+        var mx = (e[0] + e[2]) / 2, my = (e[1] + e[3]) / 2, on = onEdge(B, mx, my, e[2] - e[0], e[3] - e[1]);
+        if (on === 0) {
+          var inB = wind(B, mx, my) !== 0;
+          if ((mode === 'inter') === inB) add(e);
+        } else if (on === 1) { if (mode !== 'diff') add(e); }
+        else if (mode === 'diff') add(e);
+      });
+      split(B, A).forEach(function (e) {
+        var mx = (e[0] + e[2]) / 2, my = (e[1] + e[3]) / 2;
+        if (onEdge(A, mx, my, e[2] - e[0], e[3] - e[1]) !== 0) return;
+        var inA = wind(A, mx, my) !== 0;
+        if (mode === 'union') { if (!inA) add(e); }
+        else if (inA) add(mode === 'diff' ? [e[2], e[3], e[0], e[1]] : e);
+      });
+      return out;
+    }
+    function unionAll(list) { var r = []; list.forEach(function (x) { r = op(r, x, 'union'); }); return r; }
+    function rings(E) {
+      var by = {}, used = [], out = [];
+      E.forEach(function (e, i) { var k = e[0] + ',' + e[1]; (by[k] = by[k] || []).push(i); });
+      E.forEach(function (e, i) {
+        if (used[i]) return;
+        var ring = [[e[0], e[1]]], cur = i, guard = 0;
+        while (cur != null && guard++ < 5000) {
+          used[cur] = true;
+          var c = E[cur], k = c[2] + ',' + c[3], nxt = null, l = by[k] || [];
+          ring.push([c[2], c[3]]);
+          for (var j = 0; j < l.length; j++) if (!used[l[j]]) { nxt = l[j]; break; }
+          cur = nxt;
+        }
+        if (ring.length > 3) { ring.pop(); out.push(ring); }
+      });
+      return out;
+    }
+    function ringArea(r) { var a = 0, i, j; for (i = 0; i < r.length; i++) { j = (i + 1) % r.length; a += r[i][0] * r[j][1] - r[j][0] * r[i][1]; } return a / 2; }
+    function labelPoint(E) {
+      var rs = rings(E).map(function (r) { return { r: r, a: ringArea(r) }; }).filter(function (o) { return o.a > 0; });
+      if (!rs.length) return null;
+      rs.sort(function (p, q) { return q.a - p.a; });
+      var r = rs[0].r, cx = 0, cy = 0, k = 0, i, j, f, a = 0;
+      for (i = 0; i < r.length; i++) { j = (i + 1) % r.length; f = r[i][0] * r[j][1] - r[j][0] * r[i][1]; a += f; cx += (r[i][0] + r[j][0]) * f; cy += (r[i][1] + r[j][1]) * f; }
+      cx /= 3 * a; cy /= 3 * a;
+      if (wind(E, cx, cy) !== 0) return { x: cx, y: cy };
+      var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, best = null, bd = 1e9, gx, gy;
+      r.forEach(function (p) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+      for (gx = 0; gx <= 40; gx++) for (gy = 0; gy <= 40; gy++) {
+        var tx = x0 + (x1 - x0) * gx / 40, ty = y0 + (y1 - y0) * gy / 40;
+        if (wind(E, tx, ty) !== 0) { var d = Math.hypot(tx - cx, ty - cy); if (d < bd) { bd = d; best = { x: tx, y: ty }; } }
+      }
+      return best || { x: r[0][0], y: r[0][1] };
+    }
+    return { polyEdges: polyEdges, op: op, unionAll: unionAll, rings: rings, labelPoint: labelPoint, wind: wind };
+  })();
+
+  /* The part of each zone that is really its own: inside the sector outline and not taken by an earlier zone. */
+  SECTORS.forEach(function (s) {
+    var BE = GEO.polyEdges(s.baseP);
+    s.zones.forEach(function (z, i) {
+      var E = z.poly === s.baseP ? BE : GEO.op(GEO.polyEdges(z.poly), BE, 'inter');
+      for (var j = 0; j < i; j++) E = GEO.op(E, GEO.polyEdges(s.zones[j].poly), 'diff');
+      z.eff = E;
+    });
+  });
+  var rbCache = {};
+  function regionBase(s, h) {
+    var k = s.id + '|' + h;
+    if (!rbCache[k]) rbCache[k] = GEO.unionAll(s.zones.filter(function (z) { return z.lo <= h && h < z.hi; }).map(function (z) { return z.eff; }));
+    return rbCache[k];
+  }
+  /* What the sector covers at altitude h: its active zones, minus the sectors it excludes. */
+  function regionOf(s, h) {
+    var R = regionBase(s, h);
+    if (s.exclude && R.length) {
+      SECTORS.forEach(function (x) { if (cfgOn(x) && s.exclude.indexOf(x.fam) >= 0) R = GEO.op(R, regionBase(x, h), 'diff'); });
+    }
+    return R;
+  }
+  /* Combined view: the sector split into altitude bands that have different lateral coverage. */
+  function bandTxt(a, b) { return (a <= 0 ? 'GND' : nf.format(a)) + '–' + nf.format(b) + ' m'; }
+  function piecesOf(s) {
+    var bp = { 0: 1 }, out = [], idx = {};
+    function addZ(x) { x.zones.forEach(function (z) { bp[z.lo] = 1; bp[z.hi] = 1; }); }
+    addZ(s);
+    if (s.exclude) SECTORS.forEach(function (x) { if (cfgOn(x) && s.exclude.indexOf(x.fam) >= 0) addZ(x); });
+    var b = Object.keys(bp).map(Number).sort(function (p, q) { return p - q; }), i;
+    for (i = 0; i < b.length - 1; i++) {
+      var R = regionOf(s, (b[i] + b[i + 1]) / 2);
+      if (!R.length) continue;
+      var key = R.map(function (e) { return e.join(','); }).sort().join('|');
+      if (idx[key] == null) { idx[key] = out.length; out.push({ R: R, iv: [] }); }
+      var iv = out[idx[key]].iv, last = iv[iv.length - 1];
+      if (last && last[1] === b[i]) last[1] = b[i + 1]; else iv.push([b[i], b[i + 1]]);
+    }
+    out.forEach(function (pc) { pc.txt = pc.iv.map(function (v) { return bandTxt(v[0], v[1]); }).join(' + '); });
+    return out;
+  }
+  function ringsD(E) {
+    return GEO.rings(E).map(function (r) {
+      return 'M' + r.map(function (q) { var c = px({ x: q[0], y: q[1] }); return c[0].toFixed(1) + ' ' + c[1].toFixed(1); }).join('L') + 'Z';
+    }).join('');
+  }
+  /* Fades: a changed sector cross-fades from its old shape to its new one. */
+  var secPrev = {};
+  function fade(e, a, b, done) {
+    var reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !e.animate) { if (done) done(); return; }
+    var an = e.animate([{ opacity: a }, { opacity: b }], { duration: 220, easing: 'ease-out', fill: b === 0 ? 'forwards' : 'none' });
+    if (done) { an.onfinish = done; an.oncancel = done; }
+  }
+  function ghostOut(s, pv) {
+    var q = el('path', { d: pv.d, 'fill-rule': 'evenodd', 'class': pv.cls, style: '--sc:' + col(s) }, gGhost);
+    fade(q, 1, 0, function () { if (q.parentNode) q.parentNode.removeChild(q); });
+    if (pv.ld) {
+      var l = el('path', { d: pv.ld, 'class': 'sec-line', style: '--sc:' + col(s) }, gGhost);
+      fade(l, 1, 0, function () { if (l.parentNode) l.parentNode.removeChild(l); });
+    }
+  }
+  /* Combined view labels: put each label on a free spot inside its own area. */
+  function eArea(E) { var a = 0; E.forEach(function (e) { a += e[0] * e[3] - e[2] * e[1]; }); return a / 2; }
+  function placeLabels(items) {
+    var placed = [];
+    AIRPORTS.forEach(function (a) { var c = px(toNm(a.lat, a.lon)); placed.push({ x: c[0] + 20, y: c[1], w: 36, h: 12 }); });
+    function hit(x, y, w, h) {
+      return placed.some(function (q) { return Math.abs(q.x - x) < (q.w + w) / 2 + 2 && Math.abs(q.y - y) < (q.h + h) / 2 + 1; });
+    }
+    function cands(E, a) {
+      var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, out = [], i, j;
+      E.forEach(function (e) { x0 = Math.min(x0, e[0]); x1 = Math.max(x1, e[0]); y0 = Math.min(y0, e[1]); y1 = Math.max(y1, e[1]); });
+      for (i = 0; i <= 18; i++) for (j = 0; j <= 18; j++) {
+        var x = x0 + (x1 - x0) * i / 18, y = y0 + (y1 - y0) * j / 18;
+        if (GEO.wind(E, x, y) !== 0) out.push({ x: x, y: y, d: Math.hypot(x - a.x, y - a.y) });
+      }
+      out.sort(function (p, q) { return p.d - q.d; });
+      return [a].concat(out);
+    }
+    items.forEach(function (it) {
+      it.a = GEO.labelPoint(it.E); it.area = eArea(it.E);
+      it.w = (it.k === 'n' ? 7.4 : 5.5) * it.text.length; it.h = it.k === 'n' ? 14 : 10;
+    });
+    var order = items.filter(function (it) { return it.k === 'n'; }).sort(function (p, q) { return q.area - p.area; })
+      .concat(items.filter(function (it) { return it.k === 'f'; }).sort(function (p, q) { return q.area - p.area; }));
+    order.forEach(function (it) {
+      if (!it.a) return;
+      if (it.k === 'f' && it.area * K * K < it.w * it.h * 1.3) return;
+      var cs = cands(it.E, it.a), pick = null, i, c;
+      for (i = 0; i < cs.length; i++) { c = px(cs[i]); if (!hit(c[0], c[1], it.w, it.h)) { pick = c; break; } }
+      if (!pick) { if (it.k === 'f') return; pick = px(it.a); }
+      placed.push({ x: pick[0], y: pick[1], w: it.w, h: it.h });
+      var t = el('text', { x: pick[0], y: pick[1] + (it.k === 'n' ? 4 : 3), 'class': 'lab', 'data-sid': it.sid || '' }, gLab);
+      var ts = el('tspan', { x: pick[0], 'class': it.k }, t); ts.textContent = it.text;
+      if (it.c) ts.setAttribute('style', 'fill:' + it.c);
+    });
+  }
+  var TMAP = parse(TMA);
+
+  /* ---------- Formatting ---------- */
+  var nf = { format: function (n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f'); } };
+  function ft(m) { return Math.round(m * 3.28084 / 100) * 100; }
+  function num(m, u) { return u === 'm' ? nf.format(Math.round(m)) + ' m' : nf.format(ft(m)) + ' ft'; }
+  function lim(m, ref, u) { if (ref === 'GND' || m <= 0) return 'GND'; return (ref === 'QNH' ? 'QNH ' : '') + num(m, u); }
+  function band(L, u) { return lim(L.lo, L.loRef, u) + ' – ' + lim(L.hi, L.hiRef, u); }
+  function other(u) { return u === 'm' ? 'ft' : 'm'; }
+  function dm(v, pos, neg, w) {
+    var h = v >= 0 ? pos : neg; v = Math.abs(v);
+    var d = Math.floor(v), m = (v - d) * 60;
+    return h + String(d).padStart(w, '0') + '°' + (m < 10 ? '0' : '') + m.toFixed(1) + '′';
+  }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function col(s) { return 'var(--k' + s.color + ')'; }
+  function hoursTxt(h) { return h === 'H24' ? 'H24' : 'By ATC'; }
+
+  /* ---------- State and logic ---------- */
+  var d0 = toNm(39.30, 116.18);
+  var state = {
+    alt: 1500, unit: 'm', pt: { x: d0.x, y: d0.y },
+    use: {
+      ZBAA: { ARR: { '36R': 1 }, DEP: { '36L': 1 } },
+      ZBAD: { ARR: { '01L': 1, '35L': 1 }, DEP: { '35R': 1, '11L': 1 } }
+    },
+    mode: { ZBAA: 'auto', ZBAD: 'auto' },
+    sel: null,
+    filter: 'all',
+    view: 'alt',
+    sets: { ZBAA: ['N'], ZBAD: ['N'] },
+    why: { ZBAA: '', ZBAD: '' }
+  };
+  function groupsOf(ap, sel) {
+    return ['N', 'S'].filter(function (f) { return RWY[ap][f].some(function (r) { return sel[r]; }); });
+  }
+  function updateSets() {
+    Object.keys(RWY).forEach(function (ap) {
+      var m = state.mode[ap], A = groupsOf(ap, state.use[ap].ARR), D = groupsOf(ap, state.use[ap].DEP), r, why;
+      if (m === 'N' || m === 'S') { r = [m]; why = 'forced'; }
+      else if (A.length) { r = A; why = A.length > 1 ? 'arrivals use both groups' : 'from arrivals'; }
+      else if (D.length) { r = D; why = D.length > 1 ? 'departures use both groups' : 'from departures (no arrivals set)'; }
+      else { r = ['N', 'S']; why = 'no runway selected'; }
+      state.sets[ap] = r; state.why[ap] = why;
+    });
+  }
+  var FILTERS = [['all', 'All sectors'], ['Beijing Approach', 'Beijing Approach'], ['Capital Approach', 'Capital Approach'], ['Daxing Approach', 'Daxing Approach']];
+  function visible(s) { return state.filter === 'all' || s.call === state.filter; }
+  function cfgOn(s) { return !s.cfg || state.sets[s.cfg[0]].indexOf(s.cfg[1]) >= 0; }
+  function cfgText(s) { return s.cfg ? s.cfg[0] + ' · RWY ' + RW[s.cfg[0]][s.cfg[1]] + ' in use' : 'Always applies'; }
+
+  function rawLayers(P) {
+    var out = [];
+    SECTORS.forEach(function (s) {
+      if (!cfgOn(s) || !pip(P, s.baseP)) return;
+      for (var i = 0; i < s.zones.length; i++) {
+        var z = s.zones[i];
+        if (pip(P, z.poly)) { out.push({ s: s, z: z, lo: z.lo, hi: z.hi, loRef: z.loRef, hiRef: z.hiRef }); return; }
+      }
+    });
+    return out;
+  }
+  function layersAt(P) {
+    var raw = rawLayers(P), res = [];
+    raw.forEach(function (L) {
+      var pieces = [{ lo: L.lo, hi: L.hi, loRef: L.loRef, hiRef: L.hiRef }];
+      if (L.s.exclude) raw.forEach(function (X) {
+        if (L.s.exclude.indexOf(X.s.fam) < 0) return;
+        var np = [];
+        pieces.forEach(function (p) {
+          if (X.hi <= p.lo || X.lo >= p.hi) { np.push(p); return; }
+          if (X.lo > p.lo) np.push({ lo: p.lo, hi: X.lo, loRef: p.loRef, hiRef: X.loRef });
+          if (X.hi < p.hi) np.push({ lo: X.hi, hi: p.hi, loRef: X.hiRef, hiRef: p.hiRef });
+        });
+        pieces = np;
+      });
+      pieces.forEach(function (p) { res.push({ s: L.s, z: L.z, lo: p.lo, hi: p.hi, loRef: p.loRef, hiRef: p.hiRef }); });
+    });
+    return res.filter(function (l) { return visible(l.s); });
+  }
+
+  /* ---------- Map ---------- */
+  var svg = document.getElementById('map');
+  function el(name, attrs, parent) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  var defs = el('defs', {}, svg);
+  el('rect', { width: 800, height: 800, 'class': 'mapbg' }, svg);
+  var gGrat = el('g', {}, svg), la, lo;
+  for (la = 38.5; la <= 41.01; la += 0.5) {
+    var gy = CY - toNm(la, lon0).y * K;
+    if (gy < 0 || gy > 800) continue;
+    el('line', { x1: 0, x2: 800, y1: gy, y2: gy, 'class': 'gl-line' }, gGrat);
+    el('text', { x: 6, y: gy - 4, 'class': 'gl' }, gGrat).textContent = la.toFixed(1) + '°N';
+  }
+  for (lo = 115.0; lo <= 118.51; lo += 0.5) {
+    var gx = CX + toNm(lat0, lo).x * K;
+    if (gx < 0 || gx > 800) continue;
+    el('line', { x1: gx, x2: gx, y1: 0, y2: 800, 'class': 'gl-line' }, gGrat);
+    el('text', { x: gx + 4, y: 14, 'class': 'gl' }, gGrat).textContent = lo.toFixed(1) + '°E';
+  }
+
+  var gSec = el('g', {}, svg), secG = {}, secPath = {}, secTitle = {}, secLine = {};
+  SECTORS.forEach(function (s) {
+    var g = el('g', {}, gSec); secG[s.id] = g;
+    var p = el('path', { d: '', 'fill-rule': 'evenodd', 'class': 'sec', 'data-sid': s.id, style: '--sc:' + col(s) }, g);
+    secTitle[s.id] = el('title', {}, p); secPath[s.id] = p;
+    secLine[s.id] = el('path', { d: '', 'class': 'sec-line', style: '--sc:' + col(s) }, g);
+  });
+  var gGhost = el('g', { 'pointer-events': 'none' }, svg);
+  el('path', { d: ring(TMAP), 'class': 'tma' }, svg);
+  var tp = px(TMAP[10]);
+  el('text', { x: 788, y: 786, 'text-anchor': 'end', 'class': 'tma-t' }, svg).textContent = 'BEIJING TMA · GND – 6 000 m';
+  var gLab = el('g', {}, svg), gApt = el('g', {}, svg), gGhostLab = el('g', { 'pointer-events': 'none' }, svg);
+  AIRPORTS.forEach(function (a) {
+    var q = px(toNm(a.lat, a.lon));
+    el('circle', { cx: q[0], cy: q[1], r: 3.5, 'class': 'apt-dot' }, gApt);
+    el('text', { x: q[0] + 8, y: q[1] + 4, 'class': 'apt' }, gApt).textContent = a.id;
+  });
+  var pin = el('g', { 'class': 'pin' }, svg);
+  el('circle', { r: 9, 'class': 'halo', fill: 'none' }, pin);
+  el('circle', { r: 7 }, pin);
+  el('line', { x1: -14, x2: -4, y1: 0, y2: 0 }, pin); el('line', { x1: 4, x2: 14, y1: 0, y2: 0 }, pin);
+  el('line', { x1: 0, x2: 0, y1: -14, y2: -4 }, pin); el('line', { x1: 0, x2: 0, y1: 4, y2: 14 }, pin);
+
+  svg.addEventListener('click', function (ev) {
+    var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    var p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    var np = { x: (p.x - CX) / K, y: (CY - p.y) / K };
+    var sid = ev.target && ev.target.getAttribute ? ev.target.getAttribute('data-sid') : null;
+    state.pt = np;
+    if (sid && layersAt(np).some(function (l) { return l.s.id === sid && (state.view === 'all' || (l.lo <= state.alt && state.alt < l.hi)); })) state.sel = sid;
+    render();
+  });
+
+  /* ---------- Controls ---------- */
+  var altIn = document.getElementById('alt');
+  altIn.addEventListener('input', function () { state.alt = +altIn.value; render(); });
+  function setUnit(u) {
+    state.unit = u;
+    document.getElementById('uM').setAttribute('aria-pressed', u === 'm');
+    document.getElementById('uF').setAttribute('aria-pressed', u === 'ft');
+    render();
+  }
+  document.getElementById('uM').addEventListener('click', function () { setUnit('m'); });
+  document.getElementById('uF').addEventListener('click', function () { setUnit('ft'); });
+  var VIEWS = [['alt', 'Altitude'], ['all', 'Combined']];
+  VIEWS.forEach(function (v) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'vw-' + v[0]; b.textContent = v[1];
+    b.addEventListener('click', function () { state.view = v[0]; render(); });
+    document.getElementById('vw').appendChild(b);
+  });
+  FILTERS.forEach(function (f) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'flt-' + f[0].split(' ')[0]; b.textContent = f[1];
+    b.addEventListener('click', function () { state.filter = f[0]; render(); });
+    document.getElementById('flt').appendChild(b);
+  });
+  ['ZBAA', 'ZBAD'].forEach(function (ap) {
+    var box = document.getElementById('ap-' + ap);
+    var h = document.createElement('div'); h.className = 'ap-h';
+    var t = document.createElement('h2'); t.textContent = ap + ' runways in use'; h.appendChild(t);
+    var info = document.createElement('span'); info.className = 'ap-set'; info.id = 'info-' + ap; h.appendChild(info);
+    box.appendChild(h);
+    ['ARR', 'DEP'].forEach(function (role) {
+      var row = document.createElement('div'); row.className = 'rrow';
+      var l = document.createElement('span'); l.className = 'role-l'; l.textContent = role; row.appendChild(l);
+      ['N', 'S'].forEach(function (f) {
+        var g = document.createElement('span'); g.className = 'rgrp';
+        var tg = document.createElement('span'); tg.className = 'gtag'; tg.textContent = f; tg.title = 'Runways that select the ' + f + ' sectors (RWY ' + RW[ap][f] + ')'; g.appendChild(tg);
+        RWY[ap][f].forEach(function (rw) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'rb ' + role.toLowerCase(); b.id = 'rw-' + ap + '-' + role + '-' + rw; b.textContent = rw;
+          b.addEventListener('click', function () {
+            var o = state.use[ap][role];
+            if (o[rw]) delete o[rw]; else o[rw] = 1;
+            render();
+          });
+          g.appendChild(b);
+        });
+        row.appendChild(g);
+      });
+      box.appendChild(row);
+    });
+    var seg = document.createElement('div'); seg.className = 'seg mode'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', ap + ' sector set override');
+    [['auto', 'Auto'], ['N', 'N only'], ['S', 'S only']].forEach(function (m) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.id = 'mode-' + ap + '-' + m[0]; b.textContent = m[1];
+      b.addEventListener('click', function () { state.mode[ap] = m[0]; render(); });
+      seg.appendChild(b);
+    });
+    box.appendChild(seg);
+  });
+
+  var chipBox = document.getElementById('chips');
+  chipBox.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-id]'); if (!b) return;
+    var s = SECTORS.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0];
+    var zi = 0; while (zi < s.zones.length - 1 && s.zones[zi].empty) zi++;
+    state.pt = { x: s.zones[zi].lp.x, y: s.zones[zi].lp.y };
+    state.sel = s.id;
+    var L = layersAt(state.pt).filter(function (l) { return l.s === s; })[0];
+    if (state.view === 'alt' && L && !(L.lo <= state.alt && state.alt < L.hi)) { state.alt = Math.round((L.lo + L.hi) / 2 / 300) * 300; altIn.value = state.alt; }
+    render();
+  });
+  var rowsBox = document.getElementById('rows');
+  function rowPick(tr) {
+    if (!tr || !tr.hasAttribute('data-sid')) return;
+    state.sel = tr.getAttribute('data-sid');
+    var lo = +tr.getAttribute('data-lo'), hi = +tr.getAttribute('data-hi');
+    if (state.view === 'alt' && !(lo <= state.alt && state.alt < hi)) { state.alt = +tr.getAttribute('data-mid'); altIn.value = state.alt; }
+    render();
+  }
+  rowsBox.addEventListener('click', function (ev) { rowPick(ev.target.closest('tr')); });
+  rowsBox.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); rowPick(ev.target.closest('tr')); } });
+
+  /* ---------- Altitude profile ----------
+     Rules: layers with an identical altitude range share the width as side-by-side columns.
+     Any other layer takes the full width. Where layers with different ranges overlap in altitude,
+     that part is filled with diagonal stripes in the colours of all layers covering it. */
+  function column(layers, u, selKey) {
+    var W = 340, H = 440, tp = 14, bt = 14, x0 = 70, x1 = W - 6;
+    function y(m) { return H - bt - (m / TOP_VIEW) * (H - tp - bt); }
+    function rk(l) { return l.lo + '|' + l.hi; }
+
+    var groups = {};
+    layers.forEach(function (l) { (groups[rk(l)] = groups[rk(l)] || []).push(l); });
+    Object.keys(groups).forEach(function (k) { groups[k].sort(function (a, b) { return a.s.id < b.s.id ? -1 : 1; }); });
+    layers.forEach(function (l) { var g = groups[rk(l)]; l.n = g.length; l.slot = g.indexOf(l); });
+    function xr(l) { var w = (x1 - x0) / l.n; return [x0 + l.slot * w, w]; }
+
+    var bset = {}; bset[0] = 1; bset[TOP_STD] = 1;
+    layers.forEach(function (l) { bset[l.lo] = 1; bset[l.hi] = 1; });
+    var bs = Object.keys(bset).map(Number).sort(function (a, b) { return a - b; });
+
+    var defs = '<pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" class="hatch-line"/></pattern>';
+    var made = {}, back = '', fills = '', stripes = '', i;
+
+    for (i = 0; i < bs.length - 1; i++) {
+      var a = bs[i], b = bs[i + 1], h = y(a) - y(b) + 0.5;
+      var C = layers.filter(function (l) { return l.lo <= a && l.hi >= b; });
+      if (!C.length) {
+        back += '<rect class="gapr" x="' + x0 + '" y="' + y(b) + '" width="' + (x1 - x0) + '" height="' + h + '"/>';
+        if (h > 22) back += '<text class="note-t" x="' + (x0 + 8) + '" y="' + (y(b) + 16) + '">No sector in AIP data</text>';
+        continue;
+      }
+      var same = C.every(function (c) { return c.lo === C[0].lo && c.hi === C[0].hi; });
+      if (same) {
+        C.forEach(function (c) { var r = xr(c); fills += '<rect class="bfill" style="--sc:' + col(c.s) + '" x="' + r[0] + '" y="' + y(b) + '" width="' + r[1] + '" height="' + h + '"/>'; });
+      } else {
+        var cs = [], seen = {};
+        C.forEach(function (c) { var k = c.s.color; cs.push(seen[k] ? 'var(--ink)' : 'var(--k' + k + ')'); seen[k] = 1; });
+        var pid = 'st-' + C.map(function (c) { return c.s.id; }).join('-');
+        if (!made[pid]) {
+          made[pid] = 1;
+          var n = cs.length, sw = 6;
+          defs += '<pattern id="' + pid + '" width="' + (sw * n) + '" height="' + (sw * n) + '" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+            cs.map(function (c, k) { return '<rect x="' + (k * sw) + '" y="0" width="' + sw + '" height="' + (sw * n) + '" style="fill:' + c + ';fill-opacity:.6"/>'; }).join('') + '</pattern>';
+        }
+        stripes += '<rect fill="url(#' + pid + ')" x="' + x0 + '" y="' + y(b) + '" width="' + (x1 - x0) + '" height="' + h + '"/>';
+      }
+    }
+
+    var o = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Altitude profile for the selected point"><defs>' + defs + '</defs>';
+    var ticks = [], v;
+    if (u === 'm') { for (v = 0; v <= 6000; v += 1000) ticks.push([v, nf.format(v)]); }
+    else { for (v = 0; v <= 20000; v += 5000) ticks.push([v * 0.3048, nf.format(v)]); }
+    ticks.forEach(function (t) {
+      o += '<line class="tick" x1="' + x0 + '" x2="' + x1 + '" y1="' + y(t[0]) + '" y2="' + y(t[0]) + '"/>';
+      o += '<text class="ax" x="' + (x0 - 8) + '" y="' + (y(t[0]) + 4) + '" text-anchor="end">' + t[1] + '</text>';
+    });
+    o += '<text class="ax" x="' + (x0 - 8) + '" y="9" text-anchor="end">' + u + '</text>';
+    o += '<rect class="gapr" x="' + x0 + '" y="' + y(TOP_VIEW) + '" width="' + (x1 - x0) + '" height="' + (y(TOP_STD) - y(TOP_VIEW)) + '"/>';
+    o += '<text class="note-t" x="' + (x0 + 8) + '" y="' + (y(TOP_VIEW) + 17) + '">Above the TMA (6 000 m)</text>';
+    o += back + fills + stripes;
+
+    layers.forEach(function (l) {
+      var r = xr(l);
+      o += '<rect class="bout' + (l.s.id + ':' + l.lo === selKey ? ' sel' : '') + '" style="--sc:' + col(l.s) + '" x="' + r[0] + '" y="' + y(l.hi) + '" width="' + r[1] + '" height="' + (y(l.lo) - y(l.hi)) + '"/>';
+    });
+
+    var used = [];
+    function slot(x, w, yy) {
+      var moved = true;
+      while (moved) {
+        moved = false;
+        for (var k = 0; k < used.length; k++) {
+          var q = used[k];
+          if (x < q.x + q.w && q.x < x + w && Math.abs(q.y - yy) < 15) { yy = q.y + 15; moved = true; }
+        }
+      }
+      used.push({ x: x, w: w, y: yy });
+      return yy;
+    }
+    layers.slice().sort(function (p, q) { return q.hi - p.hi || p.lo - q.lo; }).forEach(function (l) {
+      var r = xr(l), bh = y(l.lo) - y(l.hi), ty = slot(r[0], r[1], y(l.hi) + 19);
+      o += '<text class="bn" x="' + (r[0] + 8) + '" y="' + ty + '">' + esc(l.s.id) + ' <tspan class="bb">' + esc(l.s.freq) + '</tspan></text>';
+      if (bh > 40) { var by2 = slot(r[0], r[1], ty + 15); o += '<text class="bb" x="' + (r[0] + 8) + '" y="' + by2 + '">' + esc(band(l, u)) + '</text>'; }
+    });
+    var ya = y(Math.min(state.alt, TOP_VIEW));
+    if (state.view === 'alt') o += '<line class="cut" x1="' + x0 + '" x2="' + x1 + '" y1="' + ya + '" y2="' + ya + '"/>';
+    o += '</svg>';
+    return o;
+  }
+
+  /* ---------- Coordinates (GNG format) ---------- */
+  function pad(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
+  function dmsms(v) {
+    var t = Math.round(v * 3600000), d = Math.floor(t / 3600000); t -= d * 3600000;
+    var m = Math.floor(t / 60000); t -= m * 60000;
+    var sc = Math.floor(t / 1000), ms = t - sc * 1000;
+    return pad(d, 3) + '.' + pad(m, 2) + '.' + pad(sc, 2) + '.' + pad(ms, 3);
+  }
+  function gng(p) {
+    var g = fromNm(p.x, p.y);
+    return (g.lat < 0 ? 'S' : 'N') + dmsms(Math.abs(g.lat)) + ' ' + (g.lon < 0 ? 'W' : 'E') + dmsms(Math.abs(g.lon));
+  }
+  var copyBuf = [];
+  function coordBlock(title, altTxt, sub, pts) {
+    var i = copyBuf.length, lines = pts.map(gng).filter(function (t, k, a) { return k === 0 || t !== a[k - 1]; });
+    if (lines.length > 1 && lines[0] === lines[lines.length - 1]) lines.pop();
+    if (lines.length > 1) lines.push(lines[0]);
+    var txt = lines.join('\n');
+    copyBuf.push(txt);
+    return '<div class="cblock"><div class="chead"><span class="ctitle">' + esc(title) + '</span>' +
+      (altTxt ? '<span class="calt">' + esc(altTxt) + '</span>' : '') +
+      '<button type="button" class="cp" data-cp="' + i + '">Copy</button></div>' +
+      (sub ? '<p class="csub">' + sub + '</p>' : '') +
+      '<pre class="gng">' + esc(txt) + '</pre></div>';
+  }
+  function coordsHtml(s) {
+    copyBuf = [];
+    var u = state.unit;
+    var head = '<div class="phead"><h2>Sector coordinates</h2><span class="coord">GNG format</span></div>';
+    if (!s) return head + '<p class="empty" style="margin-top:10px">Select a sector to see its outline coordinates.</p>';
+    function altOf(z) { return band(z, 'm'); }
+    var zs = s.zones.filter(function (z) { return !z.empty; });
+    var uniform = zs.every(function (z) { return z.lo === zs[0].lo && z.hi === zs[0].hi && z.loRef === zs[0].loRef && z.hiRef === zs[0].hiRef; });
+    var o = head;
+    o += '<div class="cname" style="--sc:' + col(s) + '"><span class="dot"></span><b>' + esc(s.id) + '</b><span class="m">' + esc(s.call) + '</span></div>';
+    o += '<dl class="kv"><dt>Conditions</dt><dd>' + (s.cfg ? 'RWY ' + esc(RW[s.cfg[0]][s.cfg[1]]) + ' in use at ' + s.cfg[0] : 'None') + '</dd>' +
+      (s.remark ? '<dt>Remark</dt><dd>' + esc(s.remark) + '</dd>' : '') + '</dl>';
+    o += coordBlock('Outline', uniform ? altOf(zs[0]) : '', '', s.baseP);
+    if (!uniform) {
+      zs.forEach(function (z) {
+        var title = z.kind || 'Sub-area', sub = '', pts;
+        if (z.area == null) { sub = 'The sector outline outside the sub-areas listed here.'; o += '<div class="cblock"><div class="chead"><span class="ctitle">' + esc(title) + '</span><span class="calt">' + esc(altOf(z)) + '</span></div><p class="csub">' + sub + '</p></div>'; return; }
+        o += coordBlock(title, altOf(z), sub, z.poly);
+      });
+    }
+    if (s.note) o += '<p class="fine">' + esc(s.note) + '</p>';
+    return o;
+  }
+  var coordsBox = document.getElementById('coords');
+  coordsBox.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-cp]'); if (!b) return;
+    var txt = copyBuf[+b.getAttribute('data-cp')];
+    function flash(t) { b.textContent = t; setTimeout(function () { b.textContent = 'Copy'; }, 1400); }
+    function pick() {
+      try {
+        var pre = b.closest('.cblock').querySelector('pre'), r = document.createRange(), sl = window.getSelection();
+        r.selectNodeContents(pre); sl.removeAllRanges(); sl.addRange(r);
+      } catch (e) { /* ignore */ }
+      flash('Selected');
+    }
+    try { navigator.clipboard.writeText(txt).then(function () { flash('Copied'); }, pick); } catch (e) { pick(); }
+  });
+
+  /* ---------- Render ---------- */
+  function render() {
+    var u = state.unit, h = state.alt;
+    document.getElementById('altOut').innerHTML = state.view === 'all' ? 'All altitudes' : esc(num(h, u)) + ' <span>· ' + esc(num(h, other(u))) + '</span>';
+    altIn.disabled = state.view === 'all';
+    document.getElementById('altCtl').className = 'ctl' + (state.view === 'all' ? ' off' : '');
+    VIEWS.forEach(function (v) { document.getElementById('vw-' + v[0]).setAttribute('aria-pressed', state.view === v[0] ? 'true' : 'false'); });
+    updateSets();
+    FILTERS.forEach(function (f) { document.getElementById('flt-' + f[0].split(' ')[0]).setAttribute('aria-pressed', state.filter === f[0] ? 'true' : 'false'); });
+    Object.keys(RWY).forEach(function (ap) {
+      ['ARR', 'DEP'].forEach(function (role) {
+        ['N', 'S'].forEach(function (f) {
+          RWY[ap][f].forEach(function (rw) { document.getElementById('rw-' + ap + '-' + role + '-' + rw).setAttribute('aria-pressed', state.use[ap][role][rw] ? 'true' : 'false'); });
+        });
+      });
+      ['auto', 'N', 'S'].forEach(function (m) { document.getElementById('mode-' + ap + '-' + m).setAttribute('aria-pressed', state.mode[ap] === m ? 'true' : 'false'); });
+      document.getElementById('info-' + ap).innerHTML = 'Sector set <b>' + state.sets[ap].join(' + ') + '</b> · ' + esc(state.why[ap]);
+    });
+
+    var layers = layersAt(state.pt);
+    var act = state.view === 'all' ? layers.slice().sort(function (p, q) { return p.lo - q.lo; }) : layers.filter(function (l) { return l.lo <= h && h < l.hi; });
+    var selL = act.filter(function (l) { return l.s.id === state.sel; })[0] || act[0] || null;
+    var selId = selL ? selL.s.id : null;
+
+    rbCache = {};
+    var oldLabs = Array.prototype.slice.call(gLab.childNodes), changed = {};
+    while (gLab.firstChild) gLab.removeChild(gLab.firstChild);
+    var all = state.view === 'all', chips = '', labItems = [];
+    SECTORS.forEach(function (s) {
+      var g = secG[s.id], on = cfgOn(s) && visible(s);
+      if (!on) {
+        var pv0 = secPrev[s.id];
+        if (pv0 && pv0.d) { changed[s.id] = true; ghostOut(s, pv0); }
+        secPrev[s.id] = null; g.setAttribute('display', 'none'); return;
+      }
+      g.removeAttribute('display');
+      var p = secPath[s.id], ln = secLine[s.id], has = false, lp, q, t;
+      if (all) {
+        var pcs = piecesOf(s), U = GEO.unionAll(pcs.map(function (c) { return c.R; }));
+        has = pcs.length > 0;
+        if (has) {
+          p.setAttribute('d', ringsD(U));
+          p.setAttribute('class', 'sec on all' + (s.id === selId ? ' sel' : ''));
+          ln.setAttribute('d', pcs.map(function (c) { return ringsD(c.R); }).join(''));
+          secTitle[s.id].textContent = s.id + ' · ' + s.call + ' · ' + pcs.map(function (c) { return c.txt; }).join(' / ');
+          labItems.push({ k: 'n', text: s.id, sid: s.id, E: U });
+        }
+      } else {
+        ln.setAttribute('d', '');
+        var R = regionOf(s, h);
+        has = R.length > 0;
+        if (has) {
+          p.setAttribute('d', ringsD(R));
+          p.setAttribute('class', 'sec on' + (s.id === selId ? ' sel' : ''));
+          secTitle[s.id].textContent = s.id + ' · ' + s.call + ' · ' + s.zones.filter(function (z) { return z.lo <= h && h < z.hi; }).map(function (z) { return band(z, 'm'); }).join(' / ');
+          lp = GEO.labelPoint(R);
+          if (lp) {
+            q = px(lp); t = el('text', { x: q[0], y: q[1] + 4, 'class': 'lab', 'data-sid': s.id }, gLab);
+            el('tspan', { x: q[0], 'class': 'n' }, t).textContent = s.id;
+          }
+        }
+      }
+      if (!has) { p.setAttribute('d', ''); p.setAttribute('class', 'sec'); ln.setAttribute('d', ''); }
+      var nd = has ? p.getAttribute('d') : '', nl = has ? ln.getAttribute('d') : '', pv = secPrev[s.id];
+      if (!pv || pv.d !== nd || pv.ld !== nl) {
+        changed[s.id] = true;
+        if (pv && pv.d) ghostOut(s, pv);
+        if (has) { fade(p, 0, 1); if (nl) fade(ln, 0, 1); }
+      }
+      secPrev[s.id] = { d: nd, ld: nl, cls: p.getAttribute('class') };
+      chips += '<button type="button" class="chip' + (has ? ' on' : '') + '" data-id="' + s.id + '" style="--sc:' + col(s) + '"><span class="dot"></span>' + esc(s.id) + '</button>';
+    });
+    if (all) placeLabels(labItems);
+    Array.prototype.forEach.call(gLab.childNodes, function (n) { if (changed[n.getAttribute('data-sid')]) fade(n, 0, 1); });
+    oldLabs.forEach(function (n) {
+      var sid = n.getAttribute && n.getAttribute('data-sid');
+      if (sid && changed[sid]) { gGhostLab.appendChild(n); fade(n, 1, 0, function () { if (n.parentNode) n.parentNode.removeChild(n); }); }
+    });
+    chipBox.innerHTML = chips;
+
+    var q = px(state.pt);
+    pin.setAttribute('transform', 'translate(' + q[0].toFixed(1) + ',' + q[1].toFixed(1) + ')');
+    var g = fromNm(state.pt.x, state.pt.y);
+    document.getElementById('coord').textContent = dm(g.lat, 'N', 'S', 2) + ' ' + dm(g.lon, 'E', 'W', 3);
+
+    var selKey = selL ? selL.s.id + ':' + selL.lo : '';
+    coordsBox.innerHTML = coordsHtml(selL ? selL.s : null);
+    document.getElementById('colSvg').innerHTML = column(layers, u, selKey);
+
+    var bounds = {};
+    layers.forEach(function (s) { bounds[s.lo + '|' + s.loRef] = 1; bounds[s.hi + '|' + s.hiRef] = 1; });
+    var bl = Object.keys(bounds).map(function (k) { var a = k.split('|'); return { m: +a[0], r: a[1] }; }).filter(function (b) { return b.m > 0; }).sort(function (a, b) { return a.m - b.m; });
+    document.getElementById('splits').innerHTML = bl.length
+      ? 'Split levels here: ' + bl.map(function (b) { return '<b>' + esc(lim(b.m, b.r, u)) + '</b>'; }).join(' · ')
+      : 'This point is outside the Beijing APP sectors.';
+
+    var rows = layers.slice().sort(function (a, b) { return b.lo - a.lo || b.hi - a.hi; }).map(function (L) {
+      var s = L.s, key = s.id + ':' + L.lo;
+      return '<tr tabindex="0" data-sid="' + s.id + '" data-lo="' + L.lo + '" data-hi="' + L.hi + '" data-mid="' + (Math.round((L.lo + L.hi) / 2 / 300) * 300) + '" class="' + (key === selKey ? 'is-sel' : '') + '">' +
+        '<td><span class="nm" style="--sc:' + col(s) + '"><span class="dot"></span>' + esc(s.id) + '</span><span class="role">' + esc(s.call) + '</span></td>' +
+        '<td class="fq">' + esc(s.freq) + '</td>' +
+        '<td class="band">' + esc(band(L, u)) + '<small>' + esc(band(L, other(u))) + '</small></td></tr>';
+    }).join('');
+    rowsBox.innerHTML = rows || '<tr><td colspan="3"><p class="empty">No sectors cover this point. Click inside the TMA boundary (dashed line).</p></td></tr>';
+
+    var det = document.getElementById('detail');
+    if (!selL) {
+      det.innerHTML = '<p class="empty">' + (layers.length ? 'No sector at the selected altitude at this point. Move the altitude slider or pick a row in the table.' : 'Click a sector on the map to see its name, frequency and altitudes.') + '</p>';
+    } else {
+      var s = selL.s, zs = '';
+      s.zones.forEach(function (z) {
+        if (z.empty) return;
+        var lab = s.zones.length > 1 ? (z.kind || '') : '';
+        zs += '<div>' + (lab ? esc(lab) + ': ' : '') + esc(band(z, u)) + '</div>';
+      });
+      det.innerHTML =
+        '<h3 style="--sc:' + col(s) + '"><span class="dot"></span>' + esc(s.id) + ' <span class="call">' + esc(s.call) + '</span></h3>' +
+        '<div class="freq">' + esc(s.freq) + '<small>MHz</small></div>' +
+        '<dl class="kv"><dt>Backup</dt><dd>' + esc(s.sec) + ' MHz</dd>' +
+        '<dt>Service</dt><dd>Beijing APP · ' + esc(hoursTxt(s.hours)) + '</dd>' +
+        '<dt>Applies</dt><dd>' + esc(cfgText(s)) + '</dd>' +
+        '<dt>Altitudes</dt><dd>' + zs + '</dd>' +
+        (s.remark ? '<dt>Remark</dt><dd>' + esc(s.remark) + '</dd>' : '') + '</dl>' +
+        (s.note ? '<p class="fine">' + esc(s.note) + '</p>' : '');
+    }
+  }
+  render();
+})();
+</script>
+
+</body></html>
